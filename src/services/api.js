@@ -46,6 +46,9 @@ export const jobsAPI = {
   save: (job) => api.post('/api/jobs', job),
   delete: (id) => api.delete(`/api/jobs/${id}`),
   getStats: () => api.get('/api/stats'),
+  skip: (data) => api.post('/api/jobs/skip', data),
+  getSkipped: () => api.get('/api/jobs/skipped'),
+  removeSkipped: (id) => api.delete(`/api/jobs/skipped/${id}`),
 };
 
 // Applications APIs
