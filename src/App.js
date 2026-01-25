@@ -9,6 +9,7 @@ import Jobs from './pages/Jobs';
 import Applications from './pages/Applications';
 import ResumeBuilder from './pages/ResumeBuilder';
 import Interview from './pages/Interview';
+import SkippedJobs from './pages/SkippedJobs';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -65,6 +66,11 @@ function App() {
         <Route path="/jobs" element={
           <PrivateRoute>
             <AppLayout><Jobs /></AppLayout>
+          </PrivateRoute>
+        } />
+        <Route path="/skipped-jobs" element={
+          <PrivateRoute>
+            <AppLayout><SkippedJobs /></AppLayout>
           </PrivateRoute>
         } />
         <Route path="/applications" element={
