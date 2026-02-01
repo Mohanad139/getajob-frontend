@@ -27,6 +27,11 @@ const Jobs = () => {
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // New search filter states
+  const [datePosted, setDatePosted] = useState(() => getPersistedState('datePosted', 'all'));
+  const [sortBy, setSortBy] = useState(() => getPersistedState('sortBy', 'relevance'));
+  const [searchCooldown, setSearchCooldown] = useState(false);
+
   // Persist state to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('jobs_searchResults', JSON.stringify(jobs));
@@ -45,6 +50,14 @@ const Jobs = () => {
   }, [viewMode]);
 
   useEffect(() => {
+    localStorage.setItem('jobs_datePosted', JSON.stringify(datePosted));
+  }, [datePosted]);
+
+  useEffect(() => {
+    localStorage.setItem('jobs_sortBy', JSON.stringify(sortBy));
+  }, [sortBy]);
+
+  useEffect(() => {
     loadSavedJobs();
   }, []);
 
@@ -59,7 +72,7 @@ const Jobs = () => {
     }
   };
 
-  const handleSearch = async (e) => {
+  const handleSearch = async (e, forceRefresh = false) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
@@ -68,12 +81,31 @@ const Jobs = () => {
     setViewMode('search');
     try {
       const response = await jobsAPI.search({
-        query: searchQuery
+        query: searchQuery,
+        date_posted: datePosted,
+        sort_by: sortBy,
+        refresh: forceRefresh
       });
       setJobs(response.data.jobs || []);
+
+      // Apply brief cooldown to prevent rapid requests
+      setSearchCooldown(true);
+      setTimeout(() => setSearchCooldown(false), 2000);
     } catch (error) {
       console.error('Search error:', error);
-      setMessage({ type: 'error', text: 'Failed to search jobs. Please try again.' });
+
+      // Handle rate limit (429) errors
+      if (error.response?.status === 429) {
+        setMessage({
+          type: 'error',
+          text: 'Too many requests. Please wait a moment and try again.'
+        });
+        // Longer cooldown on rate limit
+        setSearchCooldown(true);
+        setTimeout(() => setSearchCooldown(false), 10000);
+      } else {
+        setMessage({ type: 'error', text: 'Failed to search jobs. Please try again.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -165,7 +197,7 @@ const Jobs = () => {
       {/* Search Form */}
       <div className="card">
         <form onSubmit={handleSearch}>
-          <div className="filters">
+          <div className="filters" style={{ flexWrap: 'wrap', gap: '12px' }}>
             <input
               type="text"
               className="form-control"
@@ -174,8 +206,42 @@ const Jobs = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ flex: 1, minWidth: '300px' }}
             />
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Searching...' : 'Search Jobs'}
+            <select
+              className="form-control"
+              value={datePosted}
+              onChange={(e) => setDatePosted(e.target.value)}
+              style={{ width: 'auto', minWidth: '140px' }}
+            >
+              <option value="all">All time</option>
+              <option value="today">Today</option>
+              <option value="3days">Last 3 days</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+            </select>
+            <select
+              className="form-control"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ width: 'auto', minWidth: '140px' }}
+            >
+              <option value="relevance">Most relevant</option>
+              <option value="date">Newest first</option>
+            </select>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading || searchCooldown}
+            >
+              {loading ? 'Searching...' : searchCooldown ? 'Please wait...' : 'Search Jobs'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={(e) => handleSearch(e, true)}
+              disabled={loading || searchCooldown || !searched}
+              title="Bypass cache and fetch fresh results"
+            >
+              ↻ Refresh
             </button>
           </div>
         </form>
