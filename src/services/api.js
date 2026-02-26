@@ -98,6 +98,15 @@ export const resumeAPI = {
   download: (userId) => api.get(`/api/users/${userId}/resume/download`, { responseType: 'blob' }),
   analyze: (userId, jobDescription) => api.post(`/api/users/${userId}/resume/analyze`, { job_description: jobDescription }),
   tailor: (userId, data) => api.post(`/api/users/${userId}/resume/tailor`, data, { responseType: 'blob' }),
+  upload: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/api/resume/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  downloadFile: () => api.get('/api/resume/file', { responseType: 'blob' }),
+  deleteFile: () => api.delete('/api/resume/file'),
 };
 
 // Interview APIs

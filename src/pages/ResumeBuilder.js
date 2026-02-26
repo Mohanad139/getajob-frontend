@@ -35,6 +35,11 @@ const ResumeBuilder = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
 
+  // Upload states
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
+
   // Profile states
   const [profileData, setProfileData] = useState({
     name: '',
@@ -280,6 +285,60 @@ const ResumeBuilder = () => {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+      setUploadResult(null);
+    } else if (file) {
+      setMessage({ type: 'error', text: 'Please select a PDF file.' });
+      e.target.value = '';
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const response = await resumeAPI.upload(selectedFile);
+      setUploadResult(response.data);
+      await loadAllData();
+      setMessage({ type: 'success', text: 'Resume uploaded and parsed successfully!' });
+      setSelectedFile(null);
+    } catch (error) {
+      setMessage({ type: 'error', text: parseError(error) || 'Failed to upload resume.' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadUploadedResume = async () => {
+    try {
+      const response = await resumeAPI.downloadFile();
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${user.name}_Resume.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to download resume. No file uploaded yet.' });
+    }
+  };
+
+  const deleteUploadedResume = async () => {
+    if (!window.confirm('Are you sure you want to delete your uploaded resume?')) return;
+    try {
+      await resumeAPI.deleteFile();
+      setUploadResult(null);
+      setMessage({ type: 'success', text: 'Resume file deleted successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete resume.' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading">
@@ -319,7 +378,8 @@ const ResumeBuilder = () => {
           { key: 'experience', label: 'Work Experience' },
           { key: 'education', label: 'Education' },
           { key: 'skills', label: 'Skills' },
-          { key: 'projects', label: 'Projects' }
+          { key: 'projects', label: 'Projects' },
+          { key: 'upload', label: 'Upload Resume' }
         ].map(tab => (
           <button
             key={tab.key}
@@ -547,6 +607,95 @@ const ResumeBuilder = () => {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Upload Resume */}
+      {activeTab === 'upload' && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">Upload Resume (PDF)</h2>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-outline btn-sm" onClick={downloadUploadedResume}>
+                Download PDF
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={deleteUploadedResume}>
+                Delete PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="upload-area">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <polyline points="9 15 12 12 15 15"></polyline>
+            </svg>
+            <p style={{ marginTop: '12px', color: '#64748b', fontWeight: '500' }}>
+              {selectedFile ? selectedFile.name : 'Select a PDF resume to upload'}
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>
+              AI will automatically parse your resume and fill in your profile data
+            </p>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileSelect}
+              style={{ marginTop: '16px' }}
+              disabled={uploading}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+              style={{ marginTop: '16px' }}
+            >
+              {uploading ? 'Uploading & Parsing...' : 'Upload & Parse Resume'}
+            </button>
+          </div>
+
+          {uploading && (
+            <div style={{ textAlign: 'center', padding: '32px' }}>
+              <div className="spinner"></div>
+              <p style={{ marginTop: '16px', color: '#64748b' }}>AI is parsing your resume... This may take a few seconds.</p>
+            </div>
+          )}
+
+          {uploadResult && uploadResult.counts && (
+            <div className="upload-summary">
+              <h3 style={{ marginBottom: '16px', color: '#059669' }}>Resume Parsed Successfully</h3>
+              <div className="upload-summary-grid">
+                {uploadResult.counts.work_experience !== undefined && (
+                  <div className="upload-summary-item">
+                    <span className="upload-summary-count">{uploadResult.counts.work_experience}</span>
+                    <span className="upload-summary-label">Work Experiences</span>
+                  </div>
+                )}
+                {uploadResult.counts.education !== undefined && (
+                  <div className="upload-summary-item">
+                    <span className="upload-summary-count">{uploadResult.counts.education}</span>
+                    <span className="upload-summary-label">Education</span>
+                  </div>
+                )}
+                {uploadResult.counts.skills !== undefined && (
+                  <div className="upload-summary-item">
+                    <span className="upload-summary-count">{uploadResult.counts.skills}</span>
+                    <span className="upload-summary-label">Skills</span>
+                  </div>
+                )}
+                {uploadResult.counts.projects !== undefined && (
+                  <div className="upload-summary-item">
+                    <span className="upload-summary-count">{uploadResult.counts.projects}</span>
+                    <span className="upload-summary-label">Projects</span>
+                  </div>
+                )}
+              </div>
+              <p style={{ marginTop: '16px', color: '#64748b', fontSize: '0.9rem' }}>
+                Switch to the other tabs to view and edit the parsed data.
+              </p>
+            </div>
           )}
         </div>
       )}
