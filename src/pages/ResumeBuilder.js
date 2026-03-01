@@ -46,7 +46,9 @@ const ResumeBuilder = () => {
     phone: '',
     location: '',
     headline: '',
-    summary: ''
+    summary: '',
+    github: '',
+    linkedin: ''
   });
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -61,7 +63,9 @@ const ResumeBuilder = () => {
         phone: user.phone || '',
         location: user.location || '',
         headline: user.headline || '',
-        summary: user.summary || ''
+        summary: user.summary || '',
+        github: user.github || '',
+        linkedin: user.linkedin || ''
       });
     }
   }, [user]);
@@ -443,6 +447,29 @@ const ResumeBuilder = () => {
                   value={profileData.location}
                   onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
                   placeholder="City, Country"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">GitHub</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={profileData.github}
+                  onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
+                  placeholder="github.com/yourusername"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">LinkedIn</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={profileData.linkedin}
+                  onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
+                  placeholder="linkedin.com/in/yourusername"
                 />
               </div>
             </div>
