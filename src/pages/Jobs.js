@@ -31,6 +31,7 @@ const Jobs = () => {
   const [datePosted, setDatePosted] = useState(() => getPersistedState('datePosted', 'all'));
   const [sortBy, setSortBy] = useState(() => getPersistedState('sortBy', 'relevance'));
   const [searchCooldown, setSearchCooldown] = useState(false);
+  const [easyApplyingIndex, setEasyApplyingIndex] = useState(null);
 
   // Persist state to localStorage when it changes
   useEffect(() => {
@@ -136,6 +137,33 @@ const Jobs = () => {
   const handleSkipJob = (index) => {
     // Just remove from search results (don't save to DB)
     setJobs(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleEasyApply = async (job, index) => {
+    setEasyApplyingIndex(index);
+    try {
+      const response = await jobsAPI.easyApply(job);
+      // Download the tailored resume
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = response.headers['content-disposition'];
+      a.download = disposition?.split('filename=')[1] || 'tailored_resume.docx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      // Open the job's apply page in a new tab
+      const applyUrl = response.headers['x-apply-url'];
+      if (applyUrl) {
+        window.open(applyUrl, '_blank');
+      }
+      setMessage({ type: 'success', text: 'Tailored resume downloaded! Apply on the job page.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: parseError(error) || 'Failed to generate tailored resume.' });
+    } finally {
+      setEasyApplyingIndex(null);
+    }
   };
 
   const handleDeleteSavedJob = async (jobId) => {
@@ -307,6 +335,13 @@ const Jobs = () => {
                   <button className="btn btn-primary btn-sm" onClick={() => handleSaveJob(job, index)}>
                     Save
                   </button>
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => handleEasyApply(job, index)}
+                    disabled={easyApplyingIndex === index}
+                  >
+                    {easyApplyingIndex === index ? 'Generating...' : 'Easy Apply'}
+                  </button>
                   <button className="btn btn-danger btn-sm" onClick={() => handleSkipJob(index)}>
                     Skip
                   </button>
@@ -356,6 +391,13 @@ const Jobs = () => {
                 <div className="job-card-actions">
                   <button className="btn btn-primary btn-sm" onClick={() => handleApply(job)}>
                     Track Application
+                  </button>
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => handleEasyApply(job, `saved-${job.id}`)}
+                    disabled={easyApplyingIndex === `saved-${job.id}`}
+                  >
+                    {easyApplyingIndex === `saved-${job.id}` ? 'Generating...' : 'Easy Apply'}
                   </button>
                   {job.url && (
                     <a href={job.url} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
