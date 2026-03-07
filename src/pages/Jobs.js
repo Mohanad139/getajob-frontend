@@ -32,6 +32,7 @@ const Jobs = () => {
   const [sortBy, setSortBy] = useState(() => getPersistedState('sortBy', 'relevance'));
   const [searchCooldown, setSearchCooldown] = useState(false);
   const [easyApplyingIndex, setEasyApplyingIndex] = useState(null);
+  const [companies, setCompanies] = useState(() => getPersistedState('companies', []));
 
   // Persist state to localStorage when it changes
   useEffect(() => {
@@ -57,6 +58,10 @@ const Jobs = () => {
   useEffect(() => {
     localStorage.setItem('jobs_sortBy', JSON.stringify(sortBy));
   }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('jobs_companies', JSON.stringify(companies));
+  }, [companies]);
 
   useEffect(() => {
     loadSavedJobs();
@@ -88,6 +93,7 @@ const Jobs = () => {
         refresh: forceRefresh
       });
       setJobs(response.data.jobs || []);
+      setCompanies(response.data.companies || []);
 
       // Apply brief cooldown to prevent rapid requests
       setSearchCooldown(true);
@@ -122,7 +128,8 @@ const Jobs = () => {
         description: job.description || null,
         url: job.url || null,
         job_type: job.job_type || null,
-        posted_date: job.posted_date || null
+        posted_date: job.posted_date || null,
+        source: job.source || null
       });
       // Remove from search results
       setJobs(prev => prev.filter((_, i) => i !== index));
@@ -311,6 +318,29 @@ const Jobs = () => {
             <p>Try: "Software Engineer in Canada" or "Data Analyst in Toronto"</p>
           </div>
         ) : (
+          <>
+          {companies.length > 0 && (
+            <div className="companies-section">
+              <h3 className="companies-section-title">Companies Hiring</h3>
+              <div className="companies-list">
+                {companies.map((company, index) => (
+                  <a
+                    key={index}
+                    href={company.careers_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="company-card"
+                  >
+                    <span className="company-card-name">{company.name}</span>
+                    <p className="company-card-desc">{company.description}</p>
+                    {company.is_careers_page && (
+                      <span className="company-card-badge">Careers Page</span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid grid-2">
             {jobs.map((job, index) => (
               <div key={index} className="job-card">
@@ -320,6 +350,11 @@ const Jobs = () => {
                     <p className="company">{job.company}</p>
                     <p className="location">{job.location}</p>
                   </div>
+                  {job.source && (
+                    <span className={`badge badge-source badge-source-${job.source}`}>
+                      {job.source}
+                    </span>
+                  )}
                 </div>
                 {job.salary && (
                   <p style={{ color: '#059669', fontWeight: '500', marginBottom: '12px' }}>
@@ -354,6 +389,7 @@ const Jobs = () => {
               </div>
             ))}
           </div>
+          </>
         )
       ) : (
         // Saved Jobs View

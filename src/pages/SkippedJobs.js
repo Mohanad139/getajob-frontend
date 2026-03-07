@@ -33,7 +33,8 @@ const SkippedJobs = () => {
         description: job.description || null,
         url: job.url || null,
         job_type: job.job_type || null,
-        posted_date: job.posted_date || null
+        posted_date: job.posted_date || null,
+        source: job.source || null
       });
       // Remove from skipped list
       await jobsAPI.removeSkipped(job.id);
